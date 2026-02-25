@@ -44,7 +44,7 @@ export async function addGames (req, res) {
 
     try {
         
-        const add = await db.query(
+        await db.query(
             `INSERT
              INTO
               games (name, image, stockTotal, categoryId, pricePerDay) 
