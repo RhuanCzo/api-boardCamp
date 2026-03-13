@@ -43,7 +43,7 @@ export async function insertCustomer(req, res) {
     if (customer.cpf.length !== 11) {
         return res.sendStatus(400)
     }
-    if (customer.name !== null) {
+    if (customer.name === null) {
         return res.sendStatus(400)
     }
 

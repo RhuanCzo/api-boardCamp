@@ -1,4 +1,4 @@
-import { listRentals, insertRental, finishRental } from "../controllers/rentals.controller.js"
+import { listRentals, insertRental, finishRental, deleteRental } from "../controllers/rentals.controller.js"
 import Router from "express"
 
 const router = Router()
