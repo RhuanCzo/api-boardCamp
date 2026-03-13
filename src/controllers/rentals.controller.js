@@ -1,4 +1,5 @@
 import db from "../database/db.js"
+import dayjs from "dayjs"
 
 export async function listRentals(req, res) {
     const { customerId } = req.query
@@ -58,5 +59,47 @@ export async function insertRental(req, res) {
         console.log(err)
         return res.sendStatus(500)
     }
-
 }
+
+export async function finishRental(req, res) {
+    const { id } = req.params
+    console.log(id)
+
+    try {
+        const rental = await db.query(`SELECT * FROM rentals WHERE id = $1;`, [id])
+        const rentalData = rental.rows[0]
+
+        if (rental.rows.length === 0) {
+            return res.sendStatus(404)
+        }
+        if (rentalData.returndate !== null) {
+            return res.sendStatus(400)
+        }
+
+        const game = await db.query(`SELECT
+             priceperday FROM
+              games WHERE
+               id = $1;`,
+            [rentalData.gameid])
+
+        const pricePerDay = game.rows[0].priceperday
+
+        const today = dayjs()
+        const rentDate = dayjs(rentalData.rentdate);
+        const daysPassed = today.diff(rentDate, "day")
+        const delayDays = daysPassed - rentalData.daysrented
+
+        let delayFee = 0
+
+        if (delayDays > 0) {
+            delayFee = pricePerDay * delayDays
+        }
+        await db.query(`UPDATE rentals SET returndate = NOW(), delayfee = $1 WHERE id = $2;`, [delayFee, id])
+        return res.sendStatus(200)
+
+    } catch (err) {
+        console.log(err)
+        return res.sendStatus(500)
+    }
+}
+
