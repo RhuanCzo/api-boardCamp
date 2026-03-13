@@ -13,9 +13,9 @@ export async function getGames(req, res) {
 }
 
 export async function getGamesByName(req, res) {
-    const {name} = req.params
+    const { name } = req.query
     console.log(name)
-    
+
     try {
         const listGames = await db.query('SELECT * FROM games WHERE name ILIKE $1;', [`%${name}%`])
 
@@ -30,28 +30,27 @@ export async function getGamesByName(req, res) {
     }
 }
 
-export async function addGames (req, res) {
+export async function addGames(req, res) {
     const game = req.body
 
     if (game.name === null) {
         return res.sendStatus(400)
     }
-    if(game.stockTotal < 0) {
+    if (game.stockTotal < 0) {
         return res.sendStatus(400)
     }
-    if(game.pricePerDay < 0) {
+    if (game.pricePerDay < 0) {
         return res.sendStatus(400)
     }
 
     try {
-        
+
         await db.query(
             `INSERT
              INTO
-              games (name, image, stockTotal, categoryId, pricePerDay) 
-              VALUES ($1,$2,$3,$4,$5)
-              ON CONFLICT (name) DO NOTHING`,
-              [game.name, game.image, game.stockTotal, game.categoryId, game.pricePerDay])
+              games (name, image, "stockTotal", "categoryId", "pricePerDay") 
+              VALUES ($1,$2,$3,$4,$5)`,
+            [game.name, game.image, game.stockTotal, game.categoryId, game.pricePerDay])
         res.sendStatus(201)
     } catch (err) {
         console.log(err)

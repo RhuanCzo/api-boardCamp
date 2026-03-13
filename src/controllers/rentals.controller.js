@@ -15,9 +15,9 @@ export async function listRentals(req, res) {
                 games."categoryId",
                 categories.name AS "categoryName"
             FROM rentals
-            JOIN customers ON rentals."customerId" = customers.id
-            JOIN games ON rentals."gameId" = games.id
-            JOIN categories ON games."categoryId" = categories.id
+                JOIN customers ON rentals."customerId" = customers.id
+                JOIN games ON rentals."gameId" = games.id
+                LEFT JOIN categories ON games."categoryId" = categories.id
         `;
 
         const params = [];
@@ -70,40 +70,59 @@ export async function insertRental(req, res) {
     const { customerId, gameId, daysRented } = req.body
 
     try {
-        const customerExist = await db.query(`SELECT * FROM customers WHERE id = $1;`, [customerId])
-        const gameExist = await db.query(`SELECT * FROM games WHERE id = $1;`, [gameId])
-        const gameData = gameExist.rows[0]
-        const rentalsOpen = await db.query(`SELECT * FROM rentals WHERE "gameId" = $1 AND "returnDate" IS NULL;`, [gameId])
+
+        if (daysRented <= 0) {
+            return res.sendStatus(400)
+        }
+
+        const customerExist = await db.query(
+            `SELECT * FROM customers WHERE id = $1;`,
+            [customerId]
+        )
 
         if (customerExist.rows.length === 0) {
             return res.sendStatus(400)
         }
+
+        const gameExist = await db.query(
+            `SELECT * FROM games WHERE id = $1;`,
+            [gameId]
+        )
+
         if (gameExist.rows.length === 0) {
             return res.sendStatus(400)
         }
-        if (daysRented <= 0) {
-            return res.sendStatus(400)
-        }
+
+        const gameData = gameExist.rows[0]
+
+        const rentalsOpen = await db.query(
+            `SELECT * 
+             FROM rentals 
+             WHERE "gameId" = $1 AND "returnDate" IS NULL;`,
+            [gameId]
+        )
+
         if (rentalsOpen.rows.length >= gameData.stockTotal) {
             return res.sendStatus(400)
         }
 
-        const pricePerDay = await db.query(`SELECT "pricePerDay" FROM games WHERE id = $1;`, [gameId])
-        const originalPrice = daysRented * pricePerDay.rows[0].pricePerDay
+        const originalPrice = daysRented * gameData.pricePerDay
 
-        await db.query(`INSERT
-             INTO
-              rentals ("customerId", "gameId", "rentDate", "daysRented", "returnDate", "originalPrice", "delayFee")
-               VALUES
-                ($1, $2, NOW(), $3, NULL, $4, NULL);`,
+        await db.query(`
+            INSERT INTO rentals 
+            ("customerId","gameId","rentDate","daysRented","returnDate","originalPrice","delayFee")
+            VALUES ($1,$2,NOW(),$3,NULL,$4,NULL);
+        `,
             [customerId, gameId, daysRented, originalPrice])
 
-        res.sendStatus(200)
+        return res.sendStatus(201)
+
     } catch (err) {
         console.log(err)
         return res.sendStatus(500)
     }
 }
+
 
 export async function finishRental(req, res) {
     const { id } = req.params
@@ -111,11 +130,11 @@ export async function finishRental(req, res) {
 
     try {
         const rental = await db.query(`SELECT * FROM rentals WHERE id = $1;`, [id])
-        const rentalData = rental.rows[0]
 
         if (rental.rows.length === 0) {
             return res.sendStatus(404)
         }
+        const rentalData = rental.rows[0]
         if (rentalData.returnDate !== null) {
             return res.sendStatus(400)
         }
@@ -157,7 +176,7 @@ export async function deleteRental(req, res) {
         if (rental.rows.length === 0) {
             return res.sendStatus(404)
         }
-        if (rentalData.returndate === null) {
+        if (rentalData.returnDate === null) {
             return res.sendStatus(400)
         }
 
